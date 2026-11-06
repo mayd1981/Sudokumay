@@ -44,6 +44,7 @@
   }
 
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
   html,body{height:100%}
   body{
     margin:0;
@@ -73,8 +74,8 @@
   .board{
     position:relative;
     display:grid;
-    grid-template-columns:repeat(9,1fr);
-    grid-template-rows:repeat(9,1fr);
+    grid-template-columns:repeat(var(--n,9),1fr);
+    grid-template-rows:repeat(var(--n,9),1fr);
     aspect-ratio:1/1;
     width:100%;
     background:var(--panel);
@@ -86,6 +87,8 @@
     user-select:none;
     -webkit-user-select:none;
   }
+  .board[data-size="4"]{font-size:clamp(30px,11vw,60px)}
+  .board[data-size="6"]{font-size:clamp(22px,7vw,42px)}
   .cell{
     position:relative;
     display:flex;
@@ -99,10 +102,10 @@
     transition:background .12s ease,color .12s ease;
     overflow:hidden;
   }
-  .cell[data-c="8"]{border-right:0}
-  .cell[data-r="8"]{border-bottom:0}
-  .cell[data-c="2"],.cell[data-c="5"]{border-right:2px solid var(--line-strong)}
-  .cell[data-r="2"],.cell[data-r="5"]{border-bottom:2px solid var(--line-strong)}
+  .cell.box-r{border-right:2px solid var(--line-strong)}
+  .cell.box-b{border-bottom:2px solid var(--line-strong)}
+  .cell.edge-r{border-right:0}
+  .cell.edge-b{border-bottom:0}
 
   .cell.given{font-weight:700;color:var(--given)}
   .cell.user{font-weight:500;color:var(--user)}
@@ -117,8 +120,8 @@
 
   .notes{
     display:grid;
-    grid-template-columns:repeat(3,1fr);
-    grid-template-rows:repeat(3,1fr);
+    grid-template-columns:repeat(var(--notes-cols,3),1fr);
+    grid-template-rows:repeat(var(--notes-rows,3),1fr);
     width:100%;height:100%;
     padding:2px;
     font-size:.34em;
@@ -166,7 +169,11 @@
   @keyframes spin{to{transform:rotate(360deg)}}
 
   /* ---------- number pad ---------- */
-  .pad{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px}
+  .pad{display:grid;grid-template-columns:repeat(var(--n,9),minmax(0,1fr));gap:5px}
+  .pad[data-size="4"]{gap:10px}
+  .pad[data-size="6"]{gap:7px}
+  .pad[data-size="4"] .pad-btn{aspect-ratio:1/0.7;font-size:1.6rem}
+  .pad[data-size="6"] .pad-btn{aspect-ratio:1/0.95;font-size:1.3rem}
   .pad-btn{
     position:relative;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -189,7 +196,7 @@
   .pad-btn.done{opacity:.32;pointer-events:none}
 
   /* ---------- actions ---------- */
-  .actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .actions{display:grid;grid-template-columns:repeat(var(--actions,4),minmax(0,1fr));gap:8px}
   .btn{
     display:flex;align-items:center;justify-content:center;gap:6px;
     padding:11px 10px;
@@ -249,6 +256,54 @@
     background:var(--panel);border:1px solid var(--line);
     border-radius:4px;padding:1px 4px;
   }
+
+  /* ---------- Kinder-Design ---------- */
+  [data-kid="true"]{
+    --bg:#fff4e2;
+    --panel:#fffdf7;
+    --text:#3a2b1d;
+    --muted:#9a7a5c;
+    --line:#f0dcc0;
+    --line-strong:#c9a276;
+    --accent:#ef8a24;
+    --accent-soft:#ffe6c2;
+    --peer:#fff1dc;
+    --same:#ffdfae;
+    --error:#e5484d;
+    --error-soft:#ffe0e1;
+    --given:#4a3524;
+    --user:#e2741a;
+    --hint:#0f9d58;
+    --shadow:0 12px 30px rgba(160,110,50,.16);
+  }
+  [data-kid="true"][data-theme="dark"]{
+    --bg:#211a14;
+    --panel:#2c231a;
+    --text:#f6e8d6;
+    --muted:#b39a80;
+    --line:#423528;
+    --line-strong:#7a6144;
+    --accent:#ffb056;
+    --accent-soft:#4a3418;
+    --peer:#33291e;
+    --same:#4a3418;
+    --error:#ff8080;
+    --error-soft:#4a2222;
+    --given:#f6e8d6;
+    --user:#ffc27a;
+    --hint:#6ee7a0;
+    --shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  [data-kid="true"] .board,
+  [data-kid="true"] .btn,
+  [data-kid="true"] .pad-btn,
+  [data-kid="true"] .select,
+  [data-kid="true"] .overlay-card{
+    border-radius:18px;
+  }
+  [data-kid="true"] .brand h1{font-size:1.65rem}
+  [data-kid="true"] .cell{font-weight:700}
+
   @media (max-width:400px){
     .btn{font-size:.72rem;padding:10px 4px;gap:0}
     .btn .ico{display:none}
@@ -262,12 +317,12 @@
 <div class="app">
   <header class="head">
     <div class="brand">
-      <h1>Sudoku</h1>
+      <h1 id="title">Sudoku</h1>
       <span class="sub" id="sub">Mittel</span>
     </div>
     <div class="stats">
-      <div class="stat"><span class="k">Zeit</span><span class="v" id="timer">00:00</span></div>
-      <div class="stat"><span class="k">Fehler</span><span class="v" id="mistakes">0/3</span></div>
+      <div class="stat" id="stat-time"><span class="k">Zeit</span><span class="v" id="timer">00:00</span></div>
+      <div class="stat" id="stat-mistakes"><span class="k">Fehler</span><span class="v" id="mistakes">0/3</span></div>
     </div>
   </header>
 
@@ -284,25 +339,20 @@
 
   <div class="pad" id="pad"></div>
 
-  <div class="actions">
-    <button class="btn" id="btn-notes"><span class="ico">✎</span>Notizen</button>
-    <button class="btn" id="btn-undo"><span class="ico">↶</span>Undo</button>
-    <button class="btn" id="btn-hint"><span class="ico">✦</span>Tipp</button>
-    <button class="btn" id="btn-erase"><span class="ico">⌫</span>Löschen</button>
+  <div class="actions" id="actions">
+    <button class="btn" id="btn-notes"><span class="ico">✎</span><span class="label">Notizen</span></button>
+    <button class="btn" id="btn-undo"><span class="ico">↶</span><span class="label">Undo</span></button>
+    <button class="btn" id="btn-hint"><span class="ico">✦</span><span class="label">Tipp</span></button>
+    <button class="btn" id="btn-erase"><span class="ico">⌫</span><span class="label">Löschen</span></button>
   </div>
 
   <div class="toolbar">
-    <select class="select" id="difficulty" aria-label="Schwierigkeit">
-      <option value="leicht">Leicht</option>
-      <option value="mittel" selected>Mittel</option>
-      <option value="schwer">Schwer</option>
-      <option value="extrem">Extrem</option>
-    </select>
+    <select class="select" id="variant" aria-label="Spielvariante"></select>
     <button class="btn primary" id="new-game">Neues Spiel</button>
     <button class="btn icon-btn" id="theme" title="Design wechseln" aria-label="Design wechseln">◐</button>
   </div>
 
-  <div class="foot">
+  <div class="foot" id="foot">
     Tasten: <kbd>1</kbd>–<kbd>9</kbd> setzen · <kbd>0</kbd> löschen · <kbd>N</kbd> Notizen · <kbd>H</kbd> Tipp · <kbd>Strg</kbd>+<kbd>Z</kbd> Undo
   </div>
 </div>
@@ -313,11 +363,14 @@
 
   var STORAGE_KEY = 'sudoku.v1';
   var MAX_MISTAKES = 3;
-  var DIFFS = {
-    leicht: { givens: 40, label: 'Leicht' },
-    mittel: { givens: 34, label: 'Mittel' },
-    schwer: { givens: 29, label: 'Schwer' },
-    extrem: { givens: 25, label: 'Extrem' }
+  var VARIANTS = {
+    kind4:      { group: 'Kinder',    label: 'Kind 4×4',    size: 4, boxRows: 2, boxCols: 2, givens: 9,  kid: true,  notes: false, showMistakes: false, showTimer: false, strict: false },
+    kind6:      { group: 'Kinder',    label: 'Kind 6×6',    size: 6, boxRows: 2, boxCols: 3, givens: 20, kid: true,  notes: true,  showMistakes: false, showTimer: false, strict: false },
+    sehrleicht: { group: 'Klassisch', label: 'Sehr leicht', size: 9, boxRows: 3, boxCols: 3, givens: 50, kid: false, notes: true,  showMistakes: true,  showTimer: true,  strict: false },
+    leicht:     { group: 'Klassisch', label: 'Leicht',      size: 9, boxRows: 3, boxCols: 3, givens: 40, kid: false, notes: true,  showMistakes: true,  showTimer: true,  strict: true },
+    mittel:     { group: 'Klassisch', label: 'Mittel',      size: 9, boxRows: 3, boxCols: 3, givens: 34, kid: false, notes: true,  showMistakes: true,  showTimer: true,  strict: true },
+    schwer:     { group: 'Klassisch', label: 'Schwer',      size: 9, boxRows: 3, boxCols: 3, givens: 29, kid: false, notes: true,  showMistakes: true,  showTimer: true,  strict: true },
+    extrem:     { group: 'Klassisch', label: 'Extrem',      size: 9, boxRows: 3, boxCols: 3, givens: 25, kid: false, notes: true,  showMistakes: true,  showTimer: true,  strict: true }
   };
 
   /* ================= Sudoku-Kern ================= */
@@ -330,29 +383,30 @@
     return a;
   }
 
-  function candidates(b, i) {
-    var r = (i / 9) | 0, c = i % 9;
+  function candidates(b, size, boxRows, boxCols, i) {
+    var r = (i / size) | 0, c = i % size;
     var used = 0, k, dr, dc;
-    for (k = 0; k < 9; k++) {
-      used |= 1 << b[r * 9 + k];
-      used |= 1 << b[k * 9 + c];
+    for (k = 0; k < size; k++) {
+      used |= 1 << b[r * size + k];
+      used |= 1 << b[k * size + c];
     }
-    var br = r - (r % 3), bc = c - (c % 3);
-    for (dr = 0; dr < 3; dr++) {
-      for (dc = 0; dc < 3; dc++) used |= 1 << b[(br + dr) * 9 + bc + dc];
+    var br = r - (r % boxRows), bc = c - (c % boxCols);
+    for (dr = 0; dr < boxRows; dr++) {
+      for (dc = 0; dc < boxCols; dc++) used |= 1 << b[(br + dr) * size + bc + dc];
     }
     var out = [];
-    for (var n = 1; n <= 9; n++) if (!(used & (1 << n))) out.push(n);
+    for (var n = 1; n <= size; n++) if (!(used & (1 << n))) out.push(n);
     return out;
   }
 
-  function generateSolution() {
-    var b = new Array(81).fill(0);
+  function generateSolution(size, boxRows, boxCols) {
+    var total = size * size;
+    var b = new Array(total).fill(0);
     function rec() {
       var best = -1, bestC = null, i, c;
-      for (i = 0; i < 81; i++) {
+      for (i = 0; i < total; i++) {
         if (b[i] !== 0) continue;
-        c = candidates(b, i);
+        c = candidates(b, size, boxRows, boxCols, i);
         if (c.length === 0) return false;
         if (bestC === null || c.length < bestC.length) {
           best = i; bestC = c;
@@ -372,14 +426,15 @@
     return b;
   }
 
-  function countSolutions(board, limit) {
+  function countSolutions(board, limit, size, boxRows, boxCols) {
+    var total = size * size;
     var b = board.slice();
     var count = 0;
     function rec() {
       var best = -1, bestC = null, i, c;
-      for (i = 0; i < 81; i++) {
+      for (i = 0; i < total; i++) {
         if (b[i] !== 0) continue;
-        c = candidates(b, i);
+        c = candidates(b, size, boxRows, boxCols, i);
         if (c.length === 0) return;
         if (bestC === null || c.length < bestC.length) {
           best = i; bestC = c;
@@ -398,17 +453,18 @@
     return count;
   }
 
-  function makePuzzle(diff) {
-    var solution = generateSolution();
+  function makePuzzle(variant) {
+    var total = variant.size * variant.size;
+    var solution = generateSolution(variant.size, variant.boxRows, variant.boxCols);
     var puzzle = solution.slice();
-    var target = (DIFFS[diff] || DIFFS.mittel).givens;
-    var order = shuffle(Array.from({ length: 81 }, function (_, i) { return i; }));
-    var givens = 81;
+    var target = variant.givens;
+    var order = shuffle(Array.from({ length: total }, function (_, i) { return i; }));
+    var givens = total;
     for (var k = 0; k < order.length && givens > target; k++) {
       var i = order[k];
       var backup = puzzle[i];
       puzzle[i] = 0;
-      if (countSolutions(puzzle, 2) !== 1) puzzle[i] = backup;
+      if (countSolutions(puzzle, 2, variant.size, variant.boxRows, variant.boxCols) !== 1) puzzle[i] = backup;
       else givens--;
     }
     return { puzzle: puzzle, solution: solution };
@@ -419,19 +475,31 @@
   var state = null;
   var timerId = null;
 
-  function blankState(diff, puzzle, solution) {
+  function currentVariant() {
+    return VARIANTS[state && state.variant] || VARIANTS.mittel;
+  }
+
+  function blockId(r, c, variant) {
+    return Math.floor(r / variant.boxRows) * (variant.size / variant.boxCols) +
+      Math.floor(c / variant.boxCols);
+  }
+
+  function blankState(variantKey, puzzle, solution) {
+    var key = VARIANTS[variantKey] ? variantKey : 'mittel';
+    var variant = VARIANTS[key];
+    var total = variant.size * variant.size;
     return {
-      difficulty: diff,
+      variant: key,
       puzzle: puzzle,
       solution: solution,
       grid: puzzle.slice(),
-      notes: Array.from({ length: 81 }, function () { return []; }),
-      errors: new Array(81).fill(false),
-      hints: new Array(81).fill(false),
+      notes: Array.from({ length: total }, function () { return []; }),
+      errors: new Array(total).fill(false),
+      hints: new Array(total).fill(false),
       selected: null,
       notesMode: false,
       mistakes: 0,
-      maxMistakes: MAX_MISTAKES,
+      maxMistakes: variant.strict ? MAX_MISTAKES : null,
       seconds: 0,
       done: false,
       over: false,
@@ -450,7 +518,12 @@
   var ovTitle = document.getElementById('ov-title');
   var ovText = document.getElementById('ov-text');
   var ovActions = document.getElementById('ov-actions');
-  var diffSel = document.getElementById('difficulty');
+  var variantSel = document.getElementById('variant');
+  var statTimeEl = document.getElementById('stat-time');
+  var statMistakesEl = document.getElementById('stat-mistakes');
+  var footEl = document.getElementById('foot');
+  var titleEl = document.getElementById('title');
+  var actionsEl = document.getElementById('actions');
   var notesBtn = document.getElementById('btn-notes');
   var undoBtn = document.getElementById('btn-undo');
   var hintBtn = document.getElementById('btn-hint');
@@ -461,58 +534,71 @@
   var cells = [];
   var padButtons = [];
 
-  for (var ci = 0; ci < 81; ci++) {
-    (function (i) {
-      var d = document.createElement('div');
-      d.className = 'cell';
-      d.dataset.i = String(i);
-      d.dataset.r = String((i / 9) | 0);
-      d.dataset.c = String(i % 9);
-      d.addEventListener('click', function () {
-        if (!state || state.done || state.over) return;
-        state.selected = i;
-        render();
-      });
-      boardEl.appendChild(d);
-      cells.push(d);
-    })(ci);
+  function buildBoard(size) {
+    boardEl.innerHTML = '';
+    cells = [];
+    for (var i = 0; i < size * size; i++) {
+      (function (idx) {
+        var d = document.createElement('div');
+        d.className = 'cell';
+        d.dataset.i = String(idx);
+        d.dataset.r = String((idx / size) | 0);
+        d.dataset.c = String(idx % size);
+        d.addEventListener('click', function () {
+          if (!state || state.done || state.over) return;
+          state.selected = idx;
+          render();
+        });
+        boardEl.appendChild(d);
+        cells.push(d);
+      })(i);
+    }
   }
 
-  for (var pn = 1; pn <= 9; pn++) {
-    (function (n) {
-      var b = document.createElement('button');
-      b.className = 'pad-btn';
-      b.type = 'button';
-      b.innerHTML = '<span class="num">' + n + '</span><span class="cnt"></span>';
-      b.addEventListener('click', function () { inputNumber(n); });
-      padEl.appendChild(b);
-      padButtons.push(b);
-    })(pn);
+  function buildPad(size) {
+    padEl.innerHTML = '';
+    padButtons = [];
+    padEl.dataset.size = String(size);
+    padEl.style.setProperty('--n', String(size));
+    for (var n = 1; n <= size; n++) {
+      (function (num) {
+        var b = document.createElement('button');
+        b.className = 'pad-btn';
+        b.type = 'button';
+        b.innerHTML = '<span class="num">' + num + '</span><span class="cnt"></span>';
+        b.addEventListener('click', function () { inputNumber(num); });
+        padEl.appendChild(b);
+        padButtons.push(b);
+      })(n);
+    }
   }
 
   /* ================= Rendering ================= */
 
-  function notesHTML(notes) {
+  function notesHTML(notes, size) {
     var set = {};
     for (var k = 0; k < notes.length; k++) set[notes[k]] = true;
     var h = '<div class="notes">';
-    for (var n = 1; n <= 9; n++) h += '<span>' + (set[n] ? n : '') + '</span>';
+    for (var n = 1; n <= size; n++) h += '<span>' + (set[n] ? n : '') + '</span>';
     return h + '</div>';
   }
 
   function render() {
     if (!state) return;
+    var variant = currentVariant();
+    var size = variant.size;
+    var total = size * size;
     var sel = state.selected;
     var selVal = sel !== null ? state.grid[sel] : 0;
-    var selR = sel !== null ? (sel / 9) | 0 : -1;
-    var selC = sel !== null ? sel % 9 : -1;
-    var selB = sel !== null ? (((selR / 3) | 0) * 3 + ((selC / 3) | 0)) : -1;
+    var selR = sel !== null ? (sel / size) | 0 : -1;
+    var selC = sel !== null ? sel % size : -1;
+    var selB = sel !== null ? blockId(selR, selC, variant) : -1;
 
-    for (var i = 0; i < 81; i++) {
+    for (var i = 0; i < total; i++) {
       var el = cells[i];
       var v = state.grid[i];
-      var r = (i / 9) | 0, c = i % 9;
-      var b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+      var r = (i / size) | 0, c = i % size;
+      var b = blockId(r, c, variant);
       var cls = 'cell';
 
       if (state.puzzle[i] !== 0) cls += ' given';
@@ -524,6 +610,11 @@
       else if (sel !== null && (r === selR || c === selC || b === selB)) cls += ' peer';
       if (selVal && v === selVal && sel !== i) cls += ' same';
 
+      if ((c + 1) % variant.boxCols === 0) cls += ' box-r';
+      if ((r + 1) % variant.boxRows === 0) cls += ' box-b';
+      if (c === size - 1) cls += ' edge-r';
+      if (r === size - 1) cls += ' edge-b';
+
       if (el.className !== cls) el.className = cls;
 
       // Inhalt immer über den vollständigen Markup-String vergleichen:
@@ -531,14 +622,14 @@
       // Zahl entspricht, das Notiz-Raster im DOM stehen (Zahl wirkt winzig).
       var want = v !== 0
         ? String(v)
-        : (state.notes[i].length ? notesHTML(state.notes[i]) : '');
+        : (state.notes[i].length ? notesHTML(state.notes[i], size) : '');
       if (el.innerHTML !== want) el.innerHTML = want;
     }
 
-    var counts = new Array(10).fill(0);
-    for (var g = 0; g < 81; g++) if (state.grid[g]) counts[state.grid[g]]++;
-    for (var n = 1; n <= 9; n++) {
-      var left = 9 - counts[n];
+    var counts = new Array(size + 1).fill(0);
+    for (var g = 0; g < total; g++) if (state.grid[g]) counts[state.grid[g]]++;
+    for (var n = 1; n <= size; n++) {
+      var left = size - counts[n];
       var btn = padButtons[n - 1];
       var cntEl = btn.querySelector('.cnt');
       var txt = left > 0 ? String(left) : '';
@@ -548,8 +639,10 @@
 
     notesBtn.classList.toggle('active', state.notesMode);
     undoBtn.disabled = state.history.length === 0;
-    subEl.textContent = (DIFFS[state.difficulty] || DIFFS.mittel).label;
-    mistakesEl.textContent = state.mistakes + '/' + state.maxMistakes;
+    subEl.textContent = variant.label;
+    mistakesEl.textContent = state.maxMistakes === null
+      ? String(state.mistakes)
+      : state.mistakes + '/' + state.maxMistakes;
     updateTimer();
   }
 
@@ -611,24 +704,28 @@
   }
 
   function clearPeerNotes(i, n) {
-    var r = (i / 9) | 0, c = i % 9;
-    var br = r - (r % 3), bc = c - (c % 3);
-    for (var k = 0; k < 9; k++) {
-      removeNote(r * 9 + k, n);
-      removeNote(k * 9 + c, n);
+    var variant = currentVariant();
+    var size = variant.size;
+    var r = (i / size) | 0, c = i % size;
+    var br = r - (r % variant.boxRows), bc = c - (c % variant.boxCols);
+    for (var k = 0; k < size; k++) {
+      removeNote(r * size + k, n);
+      removeNote(k * size + c, n);
     }
-    for (var dr = 0; dr < 3; dr++) {
-      for (var dc = 0; dc < 3; dc++) removeNote((br + dr) * 9 + bc + dc, n);
+    for (var dr = 0; dr < variant.boxRows; dr++) {
+      for (var dc = 0; dc < variant.boxCols; dc++) removeNote((br + dr) * size + bc + dc, n);
     }
   }
 
   function inputNumber(n) {
     if (!state || state.done || state.over) return;
+    var variant = currentVariant();
+    if (n < 1 || n > variant.size) return;
     var i = state.selected;
     if (i === null || state.puzzle[i] !== 0) return;
 
     if (state.notesMode) {
-      if (state.grid[i] !== 0) return;
+      if (!variant.notes || state.grid[i] !== 0) return;
       pushHistory();
       var arr = state.notes[i];
       var idx = arr.indexOf(n);
@@ -654,11 +751,11 @@
     if (n !== state.solution[i]) {
       state.errors[i] = true;
       state.mistakes++;
-      if (state.mistakes >= state.maxMistakes) {
+      if (state.maxMistakes !== null && state.mistakes >= state.maxMistakes) {
         state.over = true;
         save(); render();
         showOverlay('Game Over', 'Du hast ' + state.maxMistakes + ' Fehler gemacht.', [
-          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } },
+          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.variant); } },
           { label: 'Weiterspielen', onClick: function () {
               state.over = false;
               state.mistakes = 0;
@@ -710,8 +807,9 @@
     if (!state || state.done || state.over) return;
     var i = state.selected;
     if (i === null || state.grid[i] !== 0 || state.puzzle[i] !== 0) {
+      var total = currentVariant().size * currentVariant().size;
       var empties = [];
-      for (var k = 0; k < 81; k++) if (state.grid[k] === 0) empties.push(k);
+      for (var k = 0; k < total; k++) if (state.grid[k] === 0) empties.push(k);
       if (!empties.length) return;
       i = empties[Math.floor(Math.random() * empties.length)];
       state.selected = i;
@@ -727,17 +825,23 @@
   }
 
   function checkWin() {
-    for (var i = 0; i < 81; i++) {
+    var variant = currentVariant();
+    var total = variant.size * variant.size;
+    for (var i = 0; i < total; i++) {
       if (state.grid[i] !== state.solution[i]) return;
     }
     state.done = true;
     stopTimer();
     save(); render();
-    showOverlay('Gelöst! 🎉', 'Zeit: ' + fmtTime(state.seconds) + ' · ' +
-      (DIFFS[state.difficulty] || DIFFS.mittel).label +
-      (state.mistakes ? ' · ' + state.mistakes + ' Fehler' : ' · fehlerfrei'), [
-      { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } }
-    ]);
+    var text = 'Zeit: ' + fmtTime(state.seconds) + ' · ' + variant.label;
+    if (!variant.kid) {
+      text += state.mistakes ? ' · ' + state.mistakes + ' Fehler' : ' · fehlerfrei';
+    }
+    showOverlay(
+      variant.kid ? 'Super gemacht! ⭐' : 'Gelöst! 🎉',
+      text,
+      [{ label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.variant); } }]
+    );
   }
 
   /* ================= Timer ================= */
@@ -763,7 +867,7 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         v: 1,
-        difficulty: state.difficulty,
+        variant: state.variant,
         puzzle: state.puzzle,
         solution: state.solution,
         grid: state.grid,
@@ -771,7 +875,6 @@
         errors: state.errors,
         hints: state.hints,
         mistakes: state.mistakes,
-        maxMistakes: state.maxMistakes,
         seconds: state.seconds,
         done: state.done,
         over: state.over
@@ -784,17 +887,21 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       var d = JSON.parse(raw);
-      if (!d || !Array.isArray(d.puzzle) || d.puzzle.length !== 81) return null;
-      if (!Array.isArray(d.solution) || d.solution.length !== 81) return null;
-      var s = blankState(d.difficulty || 'mittel', d.puzzle, d.solution);
-      s.grid = Array.isArray(d.grid) && d.grid.length === 81 ? d.grid : d.puzzle.slice();
-      s.notes = Array.isArray(d.notes) && d.notes.length === 81
+      if (!d) return null;
+      var key = d.variant || d.difficulty || 'mittel';
+      if (!VARIANTS[key]) key = 'mittel';
+      var variant = VARIANTS[key];
+      var total = variant.size * variant.size;
+      if (!Array.isArray(d.puzzle) || d.puzzle.length !== total) return null;
+      if (!Array.isArray(d.solution) || d.solution.length !== total) return null;
+      var s = blankState(key, d.puzzle, d.solution);
+      s.grid = Array.isArray(d.grid) && d.grid.length === total ? d.grid : d.puzzle.slice();
+      s.notes = Array.isArray(d.notes) && d.notes.length === total
         ? d.notes.map(function (a) { return Array.isArray(a) ? a.slice() : []; })
         : s.notes;
-      s.errors = Array.isArray(d.errors) && d.errors.length === 81 ? d.errors : s.errors;
-      s.hints = Array.isArray(d.hints) && d.hints.length === 81 ? d.hints : s.hints;
+      s.errors = Array.isArray(d.errors) && d.errors.length === total ? d.errors : s.errors;
+      s.hints = Array.isArray(d.hints) && d.hints.length === total ? d.hints : s.hints;
       s.mistakes = typeof d.mistakes === 'number' ? d.mistakes : 0;
-      s.maxMistakes = typeof d.maxMistakes === 'number' ? d.maxMistakes : MAX_MISTAKES;
       s.seconds = typeof d.seconds === 'number' ? d.seconds : 0;
       s.done = !!d.done;
       s.over = !!d.over;
@@ -804,13 +911,62 @@
 
   /* ================= Neues Spiel ================= */
 
-  function startNewGame(diff) {
-    diff = DIFFS[diff] ? diff : 'mittel';
-    diffSel.value = diff;
+  function applyVariantUI(variantKey) {
+    var variant = VARIANTS[variantKey] || VARIANTS.mittel;
+    if (variant.kid) document.documentElement.setAttribute('data-kid', 'true');
+    else document.documentElement.removeAttribute('data-kid');
+
+    titleEl.textContent = variant.kid ? 'Sudoku Kids' : 'Sudoku';
+    statTimeEl.hidden = !variant.showTimer;
+    statMistakesEl.hidden = !variant.showMistakes;
+    notesBtn.hidden = !variant.notes;
+    footEl.hidden = !!variant.kid;
+
+    notesBtn.querySelector('.label').textContent = variant.kid ? 'Merkzettel' : 'Notizen';
+    eraseBtn.querySelector('.label').textContent = variant.kid ? 'Radierer' : 'Löschen';
+    actionsEl.style.setProperty('--actions', variant.notes ? '4' : '3');
+
+    boardEl.style.setProperty('--n', String(variant.size));
+    boardEl.style.setProperty('--notes-cols', String(variant.boxCols));
+    boardEl.style.setProperty('--notes-rows', String(Math.ceil(variant.size / variant.boxCols)));
+    boardEl.dataset.size = String(variant.size);
+
+    if (!variant.notes && state) state.notesMode = false;
+  }
+
+  function buildVariantSelect() {
+    var groups = {};
+    var order = [];
+    Object.keys(VARIANTS).forEach(function (key) {
+      var group = VARIANTS[key].group;
+      if (!groups[group]) { groups[group] = []; order.push(group); }
+      groups[group].push(key);
+    });
+    variantSel.innerHTML = '';
+    order.forEach(function (group) {
+      var og = document.createElement('optgroup');
+      og.label = group;
+      groups[group].forEach(function (key) {
+        var opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = VARIANTS[key].label;
+        og.appendChild(opt);
+      });
+      variantSel.appendChild(og);
+    });
+  }
+
+  function startNewGame(variantKey) {
+    variantKey = VARIANTS[variantKey] ? variantKey : 'mittel';
+    variantSel.value = variantKey;
     showOverlay('Neues Spiel', 'Sudoku wird generiert …', [], true);
     setTimeout(function () {
-      var made = makePuzzle(diff);
-      state = blankState(diff, made.puzzle, made.solution);
+      var variant = VARIANTS[variantKey];
+      var made = makePuzzle(variant);
+      state = blankState(variantKey, made.puzzle, made.solution);
+      applyVariantUI(variantKey);
+      buildBoard(variant.size);
+      buildPad(variant.size);
       hideOverlay();
       save();
       render();
@@ -822,6 +978,7 @@
 
   notesBtn.addEventListener('click', function () {
     if (!state || state.done || state.over) return;
+    if (!currentVariant().notes) return;
     state.notesMode = !state.notesMode;
     render();
   });
@@ -833,27 +990,28 @@
   function hasProgress() {
     if (!state) return false;
     if (state.history.length > 0) return true;
-    for (var i = 0; i < 81; i++) if (state.grid[i] !== state.puzzle[i]) return true;
+    var total = currentVariant().size * currentVariant().size;
+    for (var i = 0; i < total; i++) if (state.grid[i] !== state.puzzle[i]) return true;
     return false;
   }
 
-  function requestNewGame(diff) {
+  function requestNewGame(variantKey) {
     if (!state || state.done || state.over || !hasProgress()) {
-      startNewGame(diff);
+      startNewGame(variantKey);
       return;
     }
     showOverlay('Neues Spiel?', 'Dein aktueller Fortschritt geht verloren.', [
-      { label: 'Neues Spiel starten', primary: true, onClick: function () { startNewGame(diff); } },
-      { label: 'Abbrechen', onClick: function () { diffSel.value = state.difficulty; hideOverlay(); } }
+      { label: 'Neues Spiel starten', primary: true, onClick: function () { startNewGame(variantKey); } },
+      { label: 'Abbrechen', onClick: function () { variantSel.value = state.variant; hideOverlay(); } }
     ]);
   }
 
   newBtn.addEventListener('click', function () {
-    requestNewGame(diffSel.value);
+    requestNewGame(variantSel.value);
   });
 
-  diffSel.addEventListener('change', function () {
-    requestNewGame(diffSel.value);
+  variantSel.addEventListener('change', function () {
+    requestNewGame(variantSel.value);
   });
 
   themeBtn.addEventListener('click', function () {
@@ -897,12 +1055,13 @@
       e.preventDefault();
       var i = state.selected;
       if (i === null) { state.selected = 0; render(); return; }
-      var r = (i / 9) | 0, c = i % 9;
-      if (e.key === 'ArrowUp') r = (r + 8) % 9;
-      if (e.key === 'ArrowDown') r = (r + 1) % 9;
-      if (e.key === 'ArrowLeft') c = (c + 8) % 9;
-      if (e.key === 'ArrowRight') c = (c + 1) % 9;
-      state.selected = r * 9 + c;
+      var size = currentVariant().size;
+      var r = (i / size) | 0, c = i % size;
+      if (e.key === 'ArrowUp') r = (r + size - 1) % size;
+      if (e.key === 'ArrowDown') r = (r + 1) % size;
+      if (e.key === 'ArrowLeft') c = (c + size - 1) % size;
+      if (e.key === 'ArrowRight') c = (c + 1) % size;
+      state.selected = r * size + c;
       render();
     }
   });
@@ -910,6 +1069,8 @@
   /* ================= Start ================= */
 
   (function init() {
+    buildVariantSelect();
+
     var savedTheme = null;
     try { savedTheme = localStorage.getItem('sudoku.theme'); } catch (e) {}
     if (!savedTheme) {
@@ -920,15 +1081,18 @@
     var loaded = load();
     if (loaded) {
       state = loaded;
-      diffSel.value = state.difficulty;
+      applyVariantUI(state.variant);
+      buildBoard(currentVariant().size);
+      buildPad(currentVariant().size);
+      variantSel.value = state.variant;
       render();
       if (state.done) {
-        showOverlay('Gelöst! 🎉', 'Zeit: ' + fmtTime(state.seconds), [
-          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } }
+        showOverlay(currentVariant().kid ? 'Super gemacht! ⭐' : 'Gelöst! 🎉', 'Zeit: ' + fmtTime(state.seconds), [
+          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.variant); } }
         ]);
       } else if (state.over) {
         showOverlay('Game Over', 'Du hast ' + state.maxMistakes + ' Fehler gemacht.', [
-          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } },
+          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.variant); } },
           { label: 'Weiterspielen', onClick: function () {
               state.over = false; state.mistakes = 0; hideOverlay(); save(); render();
             } }
