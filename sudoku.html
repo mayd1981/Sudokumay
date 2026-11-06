@@ -10,18 +10,20 @@
     --bg:#eef1f6;
     --panel:#ffffff;
     --text:#1b2333;
-    --muted:#6b7688;
+    --muted:#5b6678;
     --line:#d5dbe6;
     --line-strong:#2c3648;
-    --accent:#2f6fed;
+    --accent:#1d4ed8;
+    --accent-solid:#1d4ed8;
+    --accent-solid-hover:#1a45c2;
     --accent-soft:#dbe7ff;
     --peer:#f0f4fb;
     --same:#dbe7ff;
-    --error:#e5484d;
+    --error:#b3261e;
     --error-soft:#ffe3e4;
     --given:#1b2333;
-    --user:#2f6fed;
-    --hint:#0f9d58;
+    --user:#1d4ed8;
+    --hint:#0b6b3a;
     --shadow:0 10px 30px rgba(20,30,60,.10);
   }
   [data-theme="dark"]{
@@ -32,6 +34,8 @@
     --line:#26314a;
     --line-strong:#5d6d8c;
     --accent:#6ea8ff;
+    --accent-solid:#2f6fed;
+    --accent-solid-hover:#2a63d8;
     --accent-soft:#1d3355;
     --peer:#1a2334;
     --same:#1d3355;
@@ -45,6 +49,7 @@
 
   *{box-sizing:border-box}
   [hidden]{display:none !important}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   html,body{height:100%}
   body{
     margin:0;
@@ -56,7 +61,6 @@
     display:flex;
     justify-content:center;
     padding:16px 14px 28px;
-    transition:background .2s,color .2s;
   }
   .app{width:100%;max-width:520px;min-width:0;display:flex;flex-direction:column;gap:14px}
 
@@ -73,9 +77,8 @@
   .board-wrap{position:relative}
   .board{
     position:relative;
-    display:grid;
-    grid-template-columns:repeat(var(--n,9),1fr);
-    grid-template-rows:repeat(var(--n,9),1fr);
+    display:flex;
+    flex-direction:column;
     aspect-ratio:1/1;
     width:100%;
     background:var(--panel);
@@ -87,6 +90,7 @@
     user-select:none;
     -webkit-user-select:none;
   }
+  .board-row{display:grid;grid-template-columns:repeat(var(--n,9),minmax(0,1fr));flex:1;min-height:0}
   .board[data-size="4"]{font-size:clamp(30px,11vw,60px)}
   .board[data-size="6"]{font-size:clamp(22px,7vw,42px)}
   .cell{
@@ -115,8 +119,18 @@
   .cell.selected{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent)}
   .cell.error{color:var(--error);background:var(--error-soft)}
   .cell.error.selected{box-shadow:inset 0 0 0 2px var(--error)}
-  .cell.pop{animation:pop .18s ease}
   @keyframes pop{from{transform:scale(.72);opacity:.4}to{transform:scale(1);opacity:1}}
+  .cell:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--accent)}
+  .cell.hint::after,
+  .cell.error::after{
+    position:absolute;top:1px;right:2px;
+    font-size:max(8px,.24em);
+    line-height:1;
+    font-weight:700;
+    pointer-events:none;
+  }
+  .cell.hint::after{content:'★';color:var(--hint)}
+  .cell.error::after{content:'✕';color:var(--error)}
 
   .notes{
     display:grid;
@@ -133,16 +147,16 @@
 
   /* ---------- overlay ---------- */
   .overlay{
-    position:absolute;inset:0;
+    position:fixed;inset:0;
     display:flex;align-items:center;justify-content:center;
     background:rgba(20,28,45,.45);
     background:color-mix(in srgb,var(--bg) 72%,transparent);
     backdrop-filter:blur(6px);
     -webkit-backdrop-filter:blur(6px);
-    border-radius:14px;
-    z-index:5;
+    z-index:50;
     padding:18px;
-    animation:fade .18s ease;
+    overflow-y:auto;
+    overscroll-behavior:contain;
   }
   .overlay[hidden]{display:none}
   @keyframes fade{from{opacity:0}to{opacity:1}}
@@ -164,7 +178,6 @@
     border:3px solid var(--line);
     border-top-color:var(--accent);
     border-radius:50%;
-    animation:spin .8s linear infinite;
   }
   @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -190,7 +203,6 @@
     cursor:pointer;
     transition:transform .08s,background .12s,border-color .12s,opacity .12s;
   }
-  .pad-btn:hover{background:var(--accent-soft);border-color:var(--accent)}
   .pad-btn:active{transform:scale(.94)}
   .pad-btn .cnt{font-size:.5em;font-weight:600;color:var(--muted);line-height:1;min-height:.6em}
   .pad-btn.done{opacity:.32;pointer-events:none}
@@ -209,18 +221,23 @@
     font-weight:600;
     cursor:pointer;
     transition:background .12s,border-color .12s,transform .08s,color .12s;
-    white-space:nowrap;
+    white-space:normal;
     min-width:0;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    overflow-wrap:break-word;
+    line-height:1.25;
   }
-  .btn:hover{background:var(--peer);border-color:var(--line-strong)}
   .btn:active{transform:scale(.97)}
   .btn .ico{font-size:1rem;line-height:1}
-  .btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  .btn.primary:hover{filter:brightness(1.08);background:var(--accent)}
+  .btn .label{min-width:0;overflow-wrap:break-word;hyphens:auto}
+  .btn.active{background:var(--accent-solid);border-color:var(--accent-solid);color:#fff}
+  .btn.primary{background:var(--accent-solid);border-color:var(--accent-solid);color:#fff}
   .btn:disabled{opacity:.4;pointer-events:none}
+
+  @media (hover:hover) and (pointer:fine){
+    .pad-btn:hover{background:var(--accent-soft);border-color:var(--accent)}
+    .btn:hover{background:var(--peer);border-color:var(--line-strong)}
+    .btn.primary:hover,.btn.active:hover{background:var(--accent-solid-hover);border-color:var(--accent-solid-hover);color:#fff}
+  }
 
   /* ---------- toolbar ---------- */
   .toolbar{display:flex;gap:8px;align-items:center;min-width:0}
@@ -262,18 +279,20 @@
     --bg:#fff4e2;
     --panel:#fffdf7;
     --text:#3a2b1d;
-    --muted:#9a7a5c;
+    --muted:#7d5f45;
     --line:#f0dcc0;
     --line-strong:#c9a276;
-    --accent:#ef8a24;
+    --accent:#a84f00;
+    --accent-solid:#a84f00;
+    --accent-solid-hover:#b35400;
     --accent-soft:#ffe6c2;
     --peer:#fff1dc;
     --same:#ffdfae;
-    --error:#e5484d;
+    --error:#b3261e;
     --error-soft:#ffe0e1;
     --given:#4a3524;
-    --user:#e2741a;
-    --hint:#0f9d58;
+    --user:#a84f00;
+    --hint:#0b6b3a;
     --shadow:0 12px 30px rgba(160,110,50,.16);
   }
   [data-kid="true"][data-theme="dark"]{
@@ -284,6 +303,8 @@
     --line:#423528;
     --line-strong:#7a6144;
     --accent:#ffb056;
+    --accent-solid:#a84f00;
+    --accent-solid-hover:#b35400;
     --accent-soft:#4a3418;
     --peer:#33291e;
     --same:#4a3418;
@@ -311,6 +332,16 @@
     .pad{gap:4px}
     .foot{font-size:.64rem}
   }
+
+  @media (prefers-reduced-motion: no-preference){
+    body{transition:background .2s,color .2s}
+    .cell.pop{animation:pop .18s ease}
+    .overlay{animation:fade .18s ease}
+    .spinner{animation:spin .8s linear infinite}
+  }
+  @media (prefers-reduced-motion: reduce){
+    body,.cell,.btn,.pad-btn,.select{transition:none}
+  }
 </style>
 </head>
 <body>
@@ -328,13 +359,6 @@
 
   <div class="board-wrap">
     <div class="board" id="board"></div>
-    <div class="overlay" id="overlay" hidden>
-      <div class="overlay-card">
-        <h2 id="ov-title"></h2>
-        <p id="ov-text"></p>
-        <div class="overlay-actions" id="ov-actions"></div>
-      </div>
-    </div>
   </div>
 
   <div class="pad" id="pad"></div>
@@ -356,6 +380,15 @@
     Tasten: <kbd>1</kbd>–<kbd>9</kbd> setzen · <kbd>0</kbd> löschen · <kbd>N</kbd> Notizen · <kbd>H</kbd> Tipp · <kbd>Strg</kbd>+<kbd>Z</kbd> Undo
   </div>
 </div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ov-title" aria-describedby="ov-text" tabindex="-1" hidden>
+  <div class="overlay-card">
+    <h2 id="ov-title"></h2>
+    <p id="ov-text"></p>
+    <div class="overlay-actions" id="ov-actions"></div>
+  </div>
+</div>
+<div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 (function () {
@@ -476,6 +509,8 @@
   var timerId = null;
   var gameTimerId = null;
   var gameRequestSeq = 0;
+  var overlayOpen = false;
+  var lastFocused = null;
 
   function currentVariant() {
     return VARIANTS[state && state.variant] || VARIANTS.mittel;
@@ -511,6 +546,7 @@
 
   /* ================= DOM ================= */
 
+  var appEl = document.querySelector('.app');
   var boardEl = document.getElementById('board');
   var padEl = document.getElementById('pad');
   var timerEl = document.getElementById('timer');
@@ -526,6 +562,7 @@
   var footEl = document.getElementById('foot');
   var titleEl = document.getElementById('title');
   var actionsEl = document.getElementById('actions');
+  var liveEl = document.getElementById('live');
   var notesBtn = document.getElementById('btn-notes');
   var undoBtn = document.getElementById('btn-undo');
   var hintBtn = document.getElementById('btn-hint');
@@ -538,23 +575,47 @@
 
   function buildBoard(size) {
     boardEl.innerHTML = '';
+    boardEl.setAttribute('role', 'grid');
+    boardEl.setAttribute('aria-rowcount', String(size));
+    boardEl.setAttribute('aria-colcount', String(size));
     cells = [];
-    for (var i = 0; i < size * size; i++) {
-      (function (idx) {
-        var d = document.createElement('div');
-        d.className = 'cell';
-        d.dataset.i = String(idx);
-        d.dataset.r = String((idx / size) | 0);
-        d.dataset.c = String(idx % size);
-        d.addEventListener('click', function () {
-          if (!state || state.done || state.over) return;
-          state.selected = idx;
-          render();
-        });
-        boardEl.appendChild(d);
-        cells.push(d);
-      })(i);
+    for (var r = 0; r < size; r++) {
+      var row = document.createElement('div');
+      row.className = 'board-row';
+      row.setAttribute('role', 'row');
+      row.setAttribute('aria-rowindex', String(r + 1));
+      for (var c = 0; c < size; c++) {
+        (function (idx, rowIndex, colIndex) {
+          var d = document.createElement('div');
+          d.className = 'cell';
+          d.dataset.i = String(idx);
+          d.dataset.r = String(rowIndex);
+          d.dataset.c = String(colIndex);
+          d.setAttribute('role', 'gridcell');
+          d.setAttribute('aria-colindex', String(colIndex + 1));
+          d.setAttribute('aria-label', 'Zeile ' + (rowIndex + 1) + ', Spalte ' + (colIndex + 1));
+          d.setAttribute('tabindex', '-1');
+          d.addEventListener('click', function () {
+            if (!state || state.done || state.over) return;
+            state.selected = idx;
+            render();
+            d.focus();
+            announce(cellLabel(idx));
+          });
+          d.addEventListener('focus', function () {
+            if (!state || state.done || state.over) return;
+            if (state.selected !== idx) {
+              state.selected = idx;
+              render();
+            }
+          });
+          row.appendChild(d);
+          cells.push(d);
+        })(r * size + c, r, c);
+      }
+      boardEl.appendChild(row);
     }
+    if (cells[0]) cells[0].setAttribute('tabindex', '0');
   }
 
   function buildPad(size) {
@@ -580,9 +641,26 @@
   function notesHTML(notes, size) {
     var set = {};
     for (var k = 0; k < notes.length; k++) set[notes[k]] = true;
-    var h = '<div class="notes">';
+    var h = '<div class="notes" aria-hidden="true">';
     for (var n = 1; n <= size; n++) h += '<span>' + (set[n] ? n : '') + '</span>';
     return h + '</div>';
+  }
+
+  function cellLabel(i) {
+    var size = currentVariant().size;
+    var r = (i / size) | 0, c = i % size;
+    var base = 'Zeile ' + (r + 1) + ', Spalte ' + (c + 1);
+    var value = state.grid[i];
+    if (state.puzzle[i] !== 0) return base + ', Vorgabe ' + value;
+    if (state.errors[i]) return base + ', falsch: ' + value;
+    if (state.hints[i]) return base + ', Tipp: ' + value;
+    if (value) return base + ', ' + value;
+    if (state.notes[i].length) return base + ', leer, Notizen ' + state.notes[i].join(' ');
+    return base + ', leer';
+  }
+
+  function announce(message) {
+    if (liveEl) liveEl.textContent = message;
   }
 
   function render() {
@@ -618,6 +696,14 @@
       if (r === size - 1) cls += ' edge-b';
 
       if (el.className !== cls) el.className = cls;
+
+      el.setAttribute('aria-label', cellLabel(i));
+      el.setAttribute('aria-readonly', state.puzzle[i] !== 0 ? 'true' : 'false');
+      if (state.errors[i]) el.setAttribute('aria-invalid', 'true');
+      else el.removeAttribute('aria-invalid');
+      el.setAttribute('aria-selected', sel === i ? 'true' : 'false');
+      var tab = (sel === i || (sel === null && i === 0)) ? '0' : '-1';
+      if (el.getAttribute('tabindex') !== tab) el.setAttribute('tabindex', tab);
 
       // Inhalt immer über den vollständigen Markup-String vergleichen:
       // sonst bleibt bei einer einzelnen Notiz, die zufällig der eingegebenen
@@ -673,6 +759,8 @@
       sp.className = 'spinner';
       ovActions.appendChild(sp);
     }
+
+    var firstAction = null;
     (buttons || []).forEach(function (b) {
       var el = document.createElement('button');
       el.type = 'button';
@@ -680,11 +768,32 @@
       el.textContent = b.label;
       el.addEventListener('click', b.onClick);
       ovActions.appendChild(el);
+      if (!firstAction) firstAction = el;
     });
+
+    if (!overlayOpen) lastFocused = document.activeElement;
+    overlayOpen = true;
+    appEl.setAttribute('inert', '');
+    overlay.setAttribute('aria-busy', loading ? 'true' : 'false');
     overlay.hidden = false;
+    requestAnimationFrame(function () {
+      if (!overlayOpen) return;
+      if (firstAction) firstAction.focus();
+      else overlay.focus();
+    });
   }
 
-  function hideOverlay() { overlay.hidden = true; }
+  function hideOverlay() {
+    if (overlay.hidden) return;
+    overlay.hidden = true;
+    overlayOpen = false;
+    overlay.removeAttribute('aria-busy');
+    appEl.removeAttribute('inert');
+    var target = lastFocused;
+    lastFocused = null;
+    if (target && document.contains(target) && typeof target.focus === 'function') target.focus();
+    else if (cells[0]) cells[0].focus();
+  }
 
   /* ================= Spiel-Logik ================= */
 
@@ -734,6 +843,7 @@
       if (idx >= 0) arr.splice(idx, 1);
       else { arr.push(n); arr.sort(); }
       save(); render();
+      announce(cellLabel(i) + (idx >= 0 ? ', Notiz entfernt' : ', Notiz hinzugefügt'));
       return;
     }
 
@@ -742,6 +852,7 @@
       state.grid[i] = 0;
       state.errors[i] = false;
       save(); render();
+      announce(cellLabel(i));
       return;
     }
 
@@ -773,6 +884,7 @@
     }
 
     save(); render();
+    announce(cellLabel(i));
     var placed = cells[i];
     placed.classList.remove('pop');
     void placed.offsetWidth;
@@ -791,6 +903,7 @@
     state.errors[i] = false;
     state.hints[i] = false;
     save(); render();
+    announce(cellLabel(i));
   }
 
   function undo() {
@@ -803,6 +916,7 @@
     state.hints = h.hints;
     state.mistakes = h.mistakes;
     save(); render();
+    announce('Zug rückgängig');
   }
 
   function hint() {
@@ -823,6 +937,7 @@
     state.hints[i] = true;
     clearPeerNotes(i, state.solution[i]);
     save(); render();
+    announce(cellLabel(i));
     checkWin();
   }
 
@@ -932,6 +1047,7 @@
     boardEl.style.setProperty('--notes-cols', String(variant.boxCols));
     boardEl.style.setProperty('--notes-rows', String(Math.ceil(variant.size / variant.boxCols)));
     boardEl.dataset.size = String(variant.size);
+    boardEl.setAttribute('aria-label', 'Sudoku ' + variant.label);
 
     if (!variant.notes && state) state.notesMode = false;
   }
@@ -985,6 +1101,7 @@
       hideOverlay();
       save();
       render();
+      announce('Neues Spiel: ' + variant.label);
       startTimer();
     }, 40);
   }
@@ -996,6 +1113,7 @@
     if (!currentVariant().notes) return;
     state.notesMode = !state.notesMode;
     render();
+    announce(state.notesMode ? 'Notizenmodus an' : 'Notizenmodus aus');
   });
 
   undoBtn.addEventListener('click', undo);
@@ -1017,7 +1135,7 @@
     }
     showOverlay('Neues Spiel?', 'Dein aktueller Fortschritt geht verloren.', [
       { label: 'Neues Spiel starten', primary: true, onClick: function () { startNewGame(variantKey); } },
-      { label: 'Abbrechen', onClick: function () { variantSel.value = state.variant; hideOverlay(); } }
+      { label: 'Abbrechen', onClick: function () { variantSel.value = state.variant; hideOverlay(); variantSel.focus(); } }
     ]);
   }
 
@@ -1036,8 +1154,43 @@
     try { localStorage.setItem('sudoku.theme', next); } catch (e) {}
   });
 
+  overlay.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab' || !overlayOpen) return;
+    var buttons = ovActions.querySelectorAll('button');
+    if (!buttons.length) {
+      e.preventDefault();
+      overlay.focus();
+      return;
+    }
+    var first = buttons[0], last = buttons[buttons.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
   document.addEventListener('keydown', function (e) {
     if (!state) return;
+
+    if (e.key === 'Escape' && overlayOpen) {
+      e.preventDefault();
+      var cancel = null;
+      var buttons = ovActions.querySelectorAll('button');
+      for (var k = 0; k < buttons.length; k++) {
+        var label = buttons[k].textContent;
+        if (label === 'Abbrechen' || label === 'Weiterspielen' || label === 'Schließen') {
+          cancel = buttons[k];
+          break;
+        }
+      }
+      if (cancel) cancel.click();
+      else if (overlay.getAttribute('aria-busy') !== 'true') hideOverlay();
+      return;
+    }
+
     var tag = (e.target && e.target.tagName) || '';
     if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA') return;
 
@@ -1069,7 +1222,12 @@
     if (e.key.indexOf('Arrow') === 0) {
       e.preventDefault();
       var i = state.selected;
-      if (i === null) { state.selected = 0; render(); return; }
+      if (i === null) {
+        state.selected = 0;
+        render();
+        if (cells[0]) cells[0].focus();
+        return;
+      }
       var size = currentVariant().size;
       var r = (i / size) | 0, c = i % size;
       if (e.key === 'ArrowUp') r = (r + size - 1) % size;
@@ -1078,6 +1236,7 @@
       if (e.key === 'ArrowRight') c = (c + 1) % size;
       state.selected = r * size + c;
       render();
+      if (cells[state.selected]) cells[state.selected].focus();
     }
   });
 
