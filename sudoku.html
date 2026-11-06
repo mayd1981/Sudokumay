@@ -474,6 +474,8 @@
 
   var state = null;
   var timerId = null;
+  var gameTimerId = null;
+  var gameRequestSeq = 0;
 
   function currentVariant() {
     return VARIANTS[state && state.variant] || VARIANTS.mittel;
@@ -959,8 +961,21 @@
   function startNewGame(variantKey) {
     variantKey = VARIANTS[variantKey] ? variantKey : 'mittel';
     variantSel.value = variantKey;
+
+    // Eine noch laufende Generierung abbrechen: schnelles Umschalten soll
+    // nicht mehrere Rätsel parallel erzeugen. Die Sequenznummer fängt auch
+    // bereits eingereihte Timer-Callbacks ab.
+    gameRequestSeq++;
+    var requestSeq = gameRequestSeq;
+    if (gameTimerId !== null) {
+      clearTimeout(gameTimerId);
+      gameTimerId = null;
+    }
+
     showOverlay('Neues Spiel', 'Sudoku wird generiert …', [], true);
-    setTimeout(function () {
+    gameTimerId = setTimeout(function () {
+      gameTimerId = null;
+      if (requestSeq !== gameRequestSeq) return;
       var variant = VARIANTS[variantKey];
       var made = makePuzzle(variant);
       state = blankState(variantKey, made.puzzle, made.solution);
