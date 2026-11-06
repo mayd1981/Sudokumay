@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<title>Sudoku</title>
+<style>
+  :root{
+    --bg:#eef1f6;
+    --panel:#ffffff;
+    --text:#1b2333;
+    --muted:#6b7688;
+    --line:#d5dbe6;
+    --line-strong:#2c3648;
+    --accent:#2f6fed;
+    --accent-soft:#dbe7ff;
+    --peer:#f0f4fb;
+    --same:#dbe7ff;
+    --error:#e5484d;
+    --error-soft:#ffe3e4;
+    --given:#1b2333;
+    --user:#2f6fed;
+    --hint:#0f9d58;
+    --shadow:0 10px 30px rgba(20,30,60,.10);
+  }
+  [data-theme="dark"]{
+    --bg:#0d1220;
+    --panel:#151c2c;
+    --text:#e7ecf7;
+    --muted:#8b97ad;
+    --line:#26314a;
+    --line-strong:#5d6d8c;
+    --accent:#6ea8ff;
+    --accent-soft:#1d3355;
+    --peer:#1a2334;
+    --same:#1d3355;
+    --error:#ff6b6b;
+    --error-soft:#3a1d24;
+    --given:#e7ecf7;
+    --user:#7fb6ff;
+    --hint:#4ade80;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    touch-action:manipulation;
+    display:flex;
+    justify-content:center;
+    padding:16px 14px 28px;
+    transition:background .2s,color .2s;
+  }
+  .app{width:100%;max-width:520px;min-width:0;display:flex;flex-direction:column;gap:14px}
+
+  /* ---------- header ---------- */
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .brand h1{margin:0;font-size:1.5rem;letter-spacing:-.02em;font-weight:700}
+  .brand .sub{font-size:.8rem;color:var(--muted);font-weight:500}
+  .stats{display:flex;gap:16px}
+  .stat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+  .stat .k{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+  .stat .v{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* ---------- board ---------- */
+  .board-wrap{position:relative}
+  .board{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(9,1fr);
+    grid-template-rows:repeat(9,1fr);
+    aspect-ratio:1/1;
+    width:100%;
+    background:var(--panel);
+    border:2px solid var(--line-strong);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    font-size:clamp(15px,4.6vw,30px);
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .cell{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    font-size:1em;
+    line-height:1;
+    transition:background .12s ease,color .12s ease;
+    overflow:hidden;
+  }
+  .cell[data-c="8"]{border-right:0}
+  .cell[data-r="8"]{border-bottom:0}
+  .cell[data-c="2"],.cell[data-c="5"]{border-right:2px solid var(--line-strong)}
+  .cell[data-r="2"],.cell[data-r="5"]{border-bottom:2px solid var(--line-strong)}
+
+  .cell.given{font-weight:700;color:var(--given)}
+  .cell.user{font-weight:500;color:var(--user)}
+  .cell.hint{font-weight:600;color:var(--hint)}
+  .cell.peer{background:var(--peer)}
+  .cell.same{background:var(--same)}
+  .cell.selected{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent)}
+  .cell.error{color:var(--error);background:var(--error-soft)}
+  .cell.error.selected{box-shadow:inset 0 0 0 2px var(--error)}
+  .cell.pop{animation:pop .18s ease}
+  @keyframes pop{from{transform:scale(.72);opacity:.4}to{transform:scale(1);opacity:1}}
+
+  .notes{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    width:100%;height:100%;
+    padding:2px;
+    font-size:.34em;
+    font-weight:600;
+    color:var(--muted);
+    line-height:1;
+  }
+  .notes span{display:flex;align-items:center;justify-content:center}
+
+  /* ---------- overlay ---------- */
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(20,28,45,.45);
+    background:color-mix(in srgb,var(--bg) 72%,transparent);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border-radius:14px;
+    z-index:5;
+    padding:18px;
+    animation:fade .18s ease;
+  }
+  .overlay[hidden]{display:none}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .overlay-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:22px 20px;
+    text-align:center;
+    box-shadow:var(--shadow);
+    max-width:320px;
+    width:100%;
+  }
+  .overlay-card h2{margin:0 0 6px;font-size:1.25rem}
+  .overlay-card p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.45}
+  .overlay-actions{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+  .spinner{
+    width:26px;height:26px;margin:14px auto 0;
+    border:3px solid var(--line);
+    border-top-color:var(--accent);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- number pad ---------- */
+  .pad{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:5px}
+  .pad-btn{
+    position:relative;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:1px;
+    aspect-ratio:1/1.18;
+    padding:0;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel);
+    color:var(--accent);
+    font-family:inherit;
+    font-size:clamp(1rem,4.4vw,1.35rem);
+    font-weight:700;
+    cursor:pointer;
+    transition:transform .08s,background .12s,border-color .12s,opacity .12s;
+  }
+  .pad-btn:hover{background:var(--accent-soft);border-color:var(--accent)}
+  .pad-btn:active{transform:scale(.94)}
+  .pad-btn .cnt{font-size:.5em;font-weight:600;color:var(--muted);line-height:1;min-height:.6em}
+  .pad-btn.done{opacity:.32;pointer-events:none}
+
+  /* ---------- actions ---------- */
+  .actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    padding:11px 10px;
+    border:1px solid var(--line);
+    border-radius:11px;
+    background:var(--panel);
+    color:var(--text);
+    font-family:inherit;
+    font-size:.82rem;
+    font-weight:600;
+    cursor:pointer;
+    transition:background .12s,border-color .12s,transform .08s,color .12s;
+    white-space:nowrap;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .btn:hover{background:var(--peer);border-color:var(--line-strong)}
+  .btn:active{transform:scale(.97)}
+  .btn .ico{font-size:1rem;line-height:1}
+  .btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{filter:brightness(1.08);background:var(--accent)}
+  .btn:disabled{opacity:.4;pointer-events:none}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{display:flex;gap:8px;align-items:center;min-width:0}
+  .select{
+    flex:1;
+    min-width:0;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:11px;
+    background:var(--panel);
+    color:var(--text);
+    font-family:inherit;
+    font-size:.85rem;
+    font-weight:600;
+    cursor:pointer;
+    appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;
+    background-size:5px 5px,5px 5px;
+    background-repeat:no-repeat;
+    padding-right:34px;
+  }
+  .toolbar .btn{flex:0 0 auto}
+  .toolbar .btn.primary{flex:1}
+  .icon-btn{
+    width:44px;padding:11px 0;
+    font-size:1.05rem;
+  }
+
+  .foot{text-align:center;font-size:.7rem;color:var(--muted);margin-top:-2px}
+  .foot kbd{
+    font-family:inherit;font-size:.95em;
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:4px;padding:1px 4px;
+  }
+  @media (max-width:400px){
+    .btn{font-size:.72rem;padding:10px 4px;gap:0}
+    .btn .ico{display:none}
+    .actions{gap:6px}
+    .pad{gap:4px}
+    .foot{font-size:.64rem}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <div class="brand">
+      <h1>Sudoku</h1>
+      <span class="sub" id="sub">Mittel</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="k">Zeit</span><span class="v" id="timer">00:00</span></div>
+      <div class="stat"><span class="k">Fehler</span><span class="v" id="mistakes">0/3</span></div>
+    </div>
+  </header>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="overlay" hidden>
+      <div class="overlay-card">
+        <h2 id="ov-title"></h2>
+        <p id="ov-text"></p>
+        <div class="overlay-actions" id="ov-actions"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pad" id="pad"></div>
+
+  <div class="actions">
+    <button class="btn" id="btn-notes"><span class="ico">✎</span>Notizen</button>
+    <button class="btn" id="btn-undo"><span class="ico">↶</span>Undo</button>
+    <button class="btn" id="btn-hint"><span class="ico">✦</span>Tipp</button>
+    <button class="btn" id="btn-erase"><span class="ico">⌫</span>Löschen</button>
+  </div>
+
+  <div class="toolbar">
+    <select class="select" id="difficulty" aria-label="Schwierigkeit">
+      <option value="leicht">Leicht</option>
+      <option value="mittel" selected>Mittel</option>
+      <option value="schwer">Schwer</option>
+      <option value="extrem">Extrem</option>
+    </select>
+    <button class="btn primary" id="new-game">Neues Spiel</button>
+    <button class="btn icon-btn" id="theme" title="Design wechseln" aria-label="Design wechseln">◐</button>
+  </div>
+
+  <div class="foot">
+    Tasten: <kbd>1</kbd>–<kbd>9</kbd> setzen · <kbd>0</kbd> löschen · <kbd>N</kbd> Notizen · <kbd>H</kbd> Tipp · <kbd>Strg</kbd>+<kbd>Z</kbd> Undo
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'sudoku.v1';
+  var MAX_MISTAKES = 3;
+  var DIFFS = {
+    leicht: { givens: 40, label: 'Leicht' },
+    mittel: { givens: 34, label: 'Mittel' },
+    schwer: { givens: 29, label: 'Schwer' },
+    extrem: { givens: 25, label: 'Extrem' }
+  };
+
+  /* ================= Sudoku-Kern ================= */
+
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function candidates(b, i) {
+    var r = (i / 9) | 0, c = i % 9;
+    var used = 0, k, dr, dc;
+    for (k = 0; k < 9; k++) {
+      used |= 1 << b[r * 9 + k];
+      used |= 1 << b[k * 9 + c];
+    }
+    var br = r - (r % 3), bc = c - (c % 3);
+    for (dr = 0; dr < 3; dr++) {
+      for (dc = 0; dc < 3; dc++) used |= 1 << b[(br + dr) * 9 + bc + dc];
+    }
+    var out = [];
+    for (var n = 1; n <= 9; n++) if (!(used & (1 << n))) out.push(n);
+    return out;
+  }
+
+  function generateSolution() {
+    var b = new Array(81).fill(0);
+    function rec() {
+      var best = -1, bestC = null, i, c;
+      for (i = 0; i < 81; i++) {
+        if (b[i] !== 0) continue;
+        c = candidates(b, i);
+        if (c.length === 0) return false;
+        if (bestC === null || c.length < bestC.length) {
+          best = i; bestC = c;
+          if (c.length === 1) break;
+        }
+      }
+      if (best === -1) return true;
+      shuffle(bestC);
+      for (var k = 0; k < bestC.length; k++) {
+        b[best] = bestC[k];
+        if (rec()) return true;
+        b[best] = 0;
+      }
+      return false;
+    }
+    rec();
+    return b;
+  }
+
+  function countSolutions(board, limit) {
+    var b = board.slice();
+    var count = 0;
+    function rec() {
+      var best = -1, bestC = null, i, c;
+      for (i = 0; i < 81; i++) {
+        if (b[i] !== 0) continue;
+        c = candidates(b, i);
+        if (c.length === 0) return;
+        if (bestC === null || c.length < bestC.length) {
+          best = i; bestC = c;
+          if (c.length === 1) break;
+        }
+      }
+      if (best === -1) { count++; return; }
+      for (var k = 0; k < bestC.length; k++) {
+        b[best] = bestC[k];
+        rec();
+        b[best] = 0;
+        if (count >= limit) return;
+      }
+    }
+    rec();
+    return count;
+  }
+
+  function makePuzzle(diff) {
+    var solution = generateSolution();
+    var puzzle = solution.slice();
+    var target = (DIFFS[diff] || DIFFS.mittel).givens;
+    var order = shuffle(Array.from({ length: 81 }, function (_, i) { return i; }));
+    var givens = 81;
+    for (var k = 0; k < order.length && givens > target; k++) {
+      var i = order[k];
+      var backup = puzzle[i];
+      puzzle[i] = 0;
+      if (countSolutions(puzzle, 2) !== 1) puzzle[i] = backup;
+      else givens--;
+    }
+    return { puzzle: puzzle, solution: solution };
+  }
+
+  /* ================= Zustand ================= */
+
+  var state = null;
+  var timerId = null;
+
+  function blankState(diff, puzzle, solution) {
+    return {
+      difficulty: diff,
+      puzzle: puzzle,
+      solution: solution,
+      grid: puzzle.slice(),
+      notes: Array.from({ length: 81 }, function () { return []; }),
+      errors: new Array(81).fill(false),
+      hints: new Array(81).fill(false),
+      selected: null,
+      notesMode: false,
+      mistakes: 0,
+      maxMistakes: MAX_MISTAKES,
+      seconds: 0,
+      done: false,
+      over: false,
+      history: []
+    };
+  }
+
+  /* ================= DOM ================= */
+
+  var boardEl = document.getElementById('board');
+  var padEl = document.getElementById('pad');
+  var timerEl = document.getElementById('timer');
+  var mistakesEl = document.getElementById('mistakes');
+  var subEl = document.getElementById('sub');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ov-title');
+  var ovText = document.getElementById('ov-text');
+  var ovActions = document.getElementById('ov-actions');
+  var diffSel = document.getElementById('difficulty');
+  var notesBtn = document.getElementById('btn-notes');
+  var undoBtn = document.getElementById('btn-undo');
+  var hintBtn = document.getElementById('btn-hint');
+  var eraseBtn = document.getElementById('btn-erase');
+  var newBtn = document.getElementById('new-game');
+  var themeBtn = document.getElementById('theme');
+
+  var cells = [];
+  var padButtons = [];
+
+  for (var ci = 0; ci < 81; ci++) {
+    (function (i) {
+      var d = document.createElement('div');
+      d.className = 'cell';
+      d.dataset.i = String(i);
+      d.dataset.r = String((i / 9) | 0);
+      d.dataset.c = String(i % 9);
+      d.addEventListener('click', function () {
+        if (!state || state.done || state.over) return;
+        state.selected = i;
+        render();
+      });
+      boardEl.appendChild(d);
+      cells.push(d);
+    })(ci);
+  }
+
+  for (var pn = 1; pn <= 9; pn++) {
+    (function (n) {
+      var b = document.createElement('button');
+      b.className = 'pad-btn';
+      b.type = 'button';
+      b.innerHTML = '<span class="num">' + n + '</span><span class="cnt"></span>';
+      b.addEventListener('click', function () { inputNumber(n); });
+      padEl.appendChild(b);
+      padButtons.push(b);
+    })(pn);
+  }
+
+  /* ================= Rendering ================= */
+
+  function notesHTML(notes) {
+    var set = {};
+    for (var k = 0; k < notes.length; k++) set[notes[k]] = true;
+    var h = '<div class="notes">';
+    for (var n = 1; n <= 9; n++) h += '<span>' + (set[n] ? n : '') + '</span>';
+    return h + '</div>';
+  }
+
+  function render() {
+    if (!state) return;
+    var sel = state.selected;
+    var selVal = sel !== null ? state.grid[sel] : 0;
+    var selR = sel !== null ? (sel / 9) | 0 : -1;
+    var selC = sel !== null ? sel % 9 : -1;
+    var selB = sel !== null ? (((selR / 3) | 0) * 3 + ((selC / 3) | 0)) : -1;
+
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i];
+      var v = state.grid[i];
+      var r = (i / 9) | 0, c = i % 9;
+      var b = ((r / 3) | 0) * 3 + ((c / 3) | 0);
+      var cls = 'cell';
+
+      if (state.puzzle[i] !== 0) cls += ' given';
+      else if (state.hints[i]) cls += ' hint';
+      else if (v !== 0) cls += ' user';
+
+      if (state.errors[i]) cls += ' error';
+      if (sel === i) cls += ' selected';
+      else if (sel !== null && (r === selR || c === selC || b === selB)) cls += ' peer';
+      if (selVal && v === selVal && sel !== i) cls += ' same';
+
+      if (el.className !== cls) el.className = cls;
+
+      // Inhalt immer über den vollständigen Markup-String vergleichen:
+      // sonst bleibt bei einer einzelnen Notiz, die zufällig der eingegebenen
+      // Zahl entspricht, das Notiz-Raster im DOM stehen (Zahl wirkt winzig).
+      var want = v !== 0
+        ? String(v)
+        : (state.notes[i].length ? notesHTML(state.notes[i]) : '');
+      if (el.innerHTML !== want) el.innerHTML = want;
+    }
+
+    var counts = new Array(10).fill(0);
+    for (var g = 0; g < 81; g++) if (state.grid[g]) counts[state.grid[g]]++;
+    for (var n = 1; n <= 9; n++) {
+      var left = 9 - counts[n];
+      var btn = padButtons[n - 1];
+      var cntEl = btn.querySelector('.cnt');
+      var txt = left > 0 ? String(left) : '';
+      if (cntEl.textContent !== txt) cntEl.textContent = txt;
+      btn.classList.toggle('done', left <= 0);
+    }
+
+    notesBtn.classList.toggle('active', state.notesMode);
+    undoBtn.disabled = state.history.length === 0;
+    subEl.textContent = (DIFFS[state.difficulty] || DIFFS.mittel).label;
+    mistakesEl.textContent = state.mistakes + '/' + state.maxMistakes;
+    updateTimer();
+  }
+
+  function fmtTime(s) {
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    var sec = s % 60;
+    var mm = (h > 0 && m < 10 ? '0' : '') + m;
+    var ss = (sec < 10 ? '0' : '') + sec;
+    return h > 0 ? h + ':' + mm + ':' + ss : mm + ':' + ss;
+  }
+
+  function updateTimer() {
+    timerEl.textContent = fmtTime(state ? state.seconds : 0);
+  }
+
+  /* ================= Overlay ================= */
+
+  function showOverlay(title, text, buttons, loading) {
+    ovTitle.textContent = title;
+    ovText.textContent = text || '';
+    ovText.hidden = !text;
+    ovActions.innerHTML = '';
+    if (loading) {
+      var sp = document.createElement('div');
+      sp.className = 'spinner';
+      ovActions.appendChild(sp);
+    }
+    (buttons || []).forEach(function (b) {
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'btn' + (b.primary ? ' primary' : '');
+      el.textContent = b.label;
+      el.addEventListener('click', b.onClick);
+      ovActions.appendChild(el);
+    });
+    overlay.hidden = false;
+  }
+
+  function hideOverlay() { overlay.hidden = true; }
+
+  /* ================= Spiel-Logik ================= */
+
+  function pushHistory() {
+    state.history.push({
+      grid: state.grid.slice(),
+      notes: state.notes.map(function (a) { return a.slice(); }),
+      errors: state.errors.slice(),
+      hints: state.hints.slice(),
+      mistakes: state.mistakes
+    });
+    if (state.history.length > 300) state.history.shift();
+  }
+
+  function removeNote(i, n) {
+    var a = state.notes[i];
+    var idx = a.indexOf(n);
+    if (idx >= 0) a.splice(idx, 1);
+  }
+
+  function clearPeerNotes(i, n) {
+    var r = (i / 9) | 0, c = i % 9;
+    var br = r - (r % 3), bc = c - (c % 3);
+    for (var k = 0; k < 9; k++) {
+      removeNote(r * 9 + k, n);
+      removeNote(k * 9 + c, n);
+    }
+    for (var dr = 0; dr < 3; dr++) {
+      for (var dc = 0; dc < 3; dc++) removeNote((br + dr) * 9 + bc + dc, n);
+    }
+  }
+
+  function inputNumber(n) {
+    if (!state || state.done || state.over) return;
+    var i = state.selected;
+    if (i === null || state.puzzle[i] !== 0) return;
+
+    if (state.notesMode) {
+      if (state.grid[i] !== 0) return;
+      pushHistory();
+      var arr = state.notes[i];
+      var idx = arr.indexOf(n);
+      if (idx >= 0) arr.splice(idx, 1);
+      else { arr.push(n); arr.sort(); }
+      save(); render();
+      return;
+    }
+
+    if (state.grid[i] === n) {
+      pushHistory();
+      state.grid[i] = 0;
+      state.errors[i] = false;
+      save(); render();
+      return;
+    }
+
+    pushHistory();
+    state.grid[i] = n;
+    state.notes[i] = [];
+    state.hints[i] = false;
+
+    if (n !== state.solution[i]) {
+      state.errors[i] = true;
+      state.mistakes++;
+      if (state.mistakes >= state.maxMistakes) {
+        state.over = true;
+        save(); render();
+        showOverlay('Game Over', 'Du hast ' + state.maxMistakes + ' Fehler gemacht.', [
+          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } },
+          { label: 'Weiterspielen', onClick: function () {
+              state.over = false;
+              state.mistakes = 0;
+              hideOverlay();
+              save(); render();
+            } }
+        ]);
+        return;
+      }
+    } else {
+      state.errors[i] = false;
+      clearPeerNotes(i, n);
+    }
+
+    save(); render();
+    var placed = cells[i];
+    placed.classList.remove('pop');
+    void placed.offsetWidth;
+    placed.classList.add('pop');
+    checkWin();
+  }
+
+  function eraseCell() {
+    if (!state || state.done || state.over) return;
+    var i = state.selected;
+    if (i === null || state.puzzle[i] !== 0) return;
+    if (state.grid[i] === 0 && state.notes[i].length === 0) return;
+    pushHistory();
+    state.grid[i] = 0;
+    state.notes[i] = [];
+    state.errors[i] = false;
+    state.hints[i] = false;
+    save(); render();
+  }
+
+  function undo() {
+    if (!state || state.done || state.over) return;
+    var h = state.history.pop();
+    if (!h) return;
+    state.grid = h.grid;
+    state.notes = h.notes;
+    state.errors = h.errors;
+    state.hints = h.hints;
+    state.mistakes = h.mistakes;
+    save(); render();
+  }
+
+  function hint() {
+    if (!state || state.done || state.over) return;
+    var i = state.selected;
+    if (i === null || state.grid[i] !== 0 || state.puzzle[i] !== 0) {
+      var empties = [];
+      for (var k = 0; k < 81; k++) if (state.grid[k] === 0) empties.push(k);
+      if (!empties.length) return;
+      i = empties[Math.floor(Math.random() * empties.length)];
+      state.selected = i;
+    }
+    pushHistory();
+    state.grid[i] = state.solution[i];
+    state.notes[i] = [];
+    state.errors[i] = false;
+    state.hints[i] = true;
+    clearPeerNotes(i, state.solution[i]);
+    save(); render();
+    checkWin();
+  }
+
+  function checkWin() {
+    for (var i = 0; i < 81; i++) {
+      if (state.grid[i] !== state.solution[i]) return;
+    }
+    state.done = true;
+    stopTimer();
+    save(); render();
+    showOverlay('Gelöst! 🎉', 'Zeit: ' + fmtTime(state.seconds) + ' · ' +
+      (DIFFS[state.difficulty] || DIFFS.mittel).label +
+      (state.mistakes ? ' · ' + state.mistakes + ' Fehler' : ' · fehlerfrei'), [
+      { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } }
+    ]);
+  }
+
+  /* ================= Timer ================= */
+
+  function startTimer() {
+    stopTimer();
+    timerId = setInterval(function () {
+      if (!state || state.done || state.over) return;
+      state.seconds++;
+      updateTimer();
+      if (state.seconds % 5 === 0) save();
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+  }
+
+  /* ================= Persistenz ================= */
+
+  function save() {
+    if (!state) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        v: 1,
+        difficulty: state.difficulty,
+        puzzle: state.puzzle,
+        solution: state.solution,
+        grid: state.grid,
+        notes: state.notes,
+        errors: state.errors,
+        hints: state.hints,
+        mistakes: state.mistakes,
+        maxMistakes: state.maxMistakes,
+        seconds: state.seconds,
+        done: state.done,
+        over: state.over
+      }));
+    } catch (e) { /* Speicher nicht verfügbar */ }
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.puzzle) || d.puzzle.length !== 81) return null;
+      if (!Array.isArray(d.solution) || d.solution.length !== 81) return null;
+      var s = blankState(d.difficulty || 'mittel', d.puzzle, d.solution);
+      s.grid = Array.isArray(d.grid) && d.grid.length === 81 ? d.grid : d.puzzle.slice();
+      s.notes = Array.isArray(d.notes) && d.notes.length === 81
+        ? d.notes.map(function (a) { return Array.isArray(a) ? a.slice() : []; })
+        : s.notes;
+      s.errors = Array.isArray(d.errors) && d.errors.length === 81 ? d.errors : s.errors;
+      s.hints = Array.isArray(d.hints) && d.hints.length === 81 ? d.hints : s.hints;
+      s.mistakes = typeof d.mistakes === 'number' ? d.mistakes : 0;
+      s.maxMistakes = typeof d.maxMistakes === 'number' ? d.maxMistakes : MAX_MISTAKES;
+      s.seconds = typeof d.seconds === 'number' ? d.seconds : 0;
+      s.done = !!d.done;
+      s.over = !!d.over;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  /* ================= Neues Spiel ================= */
+
+  function startNewGame(diff) {
+    diff = DIFFS[diff] ? diff : 'mittel';
+    diffSel.value = diff;
+    showOverlay('Neues Spiel', 'Sudoku wird generiert …', [], true);
+    setTimeout(function () {
+      var made = makePuzzle(diff);
+      state = blankState(diff, made.puzzle, made.solution);
+      hideOverlay();
+      save();
+      render();
+      startTimer();
+    }, 40);
+  }
+
+  /* ================= Events ================= */
+
+  notesBtn.addEventListener('click', function () {
+    if (!state || state.done || state.over) return;
+    state.notesMode = !state.notesMode;
+    render();
+  });
+
+  undoBtn.addEventListener('click', undo);
+  hintBtn.addEventListener('click', hint);
+  eraseBtn.addEventListener('click', eraseCell);
+
+  function hasProgress() {
+    if (!state) return false;
+    if (state.history.length > 0) return true;
+    for (var i = 0; i < 81; i++) if (state.grid[i] !== state.puzzle[i]) return true;
+    return false;
+  }
+
+  function requestNewGame(diff) {
+    if (!state || state.done || state.over || !hasProgress()) {
+      startNewGame(diff);
+      return;
+    }
+    showOverlay('Neues Spiel?', 'Dein aktueller Fortschritt geht verloren.', [
+      { label: 'Neues Spiel starten', primary: true, onClick: function () { startNewGame(diff); } },
+      { label: 'Abbrechen', onClick: function () { diffSel.value = state.difficulty; hideOverlay(); } }
+    ]);
+  }
+
+  newBtn.addEventListener('click', function () {
+    requestNewGame(diffSel.value);
+  });
+
+  diffSel.addEventListener('change', function () {
+    requestNewGame(diffSel.value);
+  });
+
+  themeBtn.addEventListener('click', function () {
+    var cur = document.documentElement.getAttribute('data-theme');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('sudoku.theme', next); } catch (e) {}
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (!state) return;
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    if (e.key >= '1' && e.key <= '9') {
+      e.preventDefault();
+      inputNumber(parseInt(e.key, 10));
+      return;
+    }
+    if (e.key === '0' || e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      eraseCell();
+      return;
+    }
+    if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      notesBtn.click();
+      return;
+    }
+    if (e.key === 'h' || e.key === 'H') {
+      e.preventDefault();
+      hint();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+      e.preventDefault();
+      undo();
+      return;
+    }
+    if (e.key.indexOf('Arrow') === 0) {
+      e.preventDefault();
+      var i = state.selected;
+      if (i === null) { state.selected = 0; render(); return; }
+      var r = (i / 9) | 0, c = i % 9;
+      if (e.key === 'ArrowUp') r = (r + 8) % 9;
+      if (e.key === 'ArrowDown') r = (r + 1) % 9;
+      if (e.key === 'ArrowLeft') c = (c + 8) % 9;
+      if (e.key === 'ArrowRight') c = (c + 1) % 9;
+      state.selected = r * 9 + c;
+      render();
+    }
+  });
+
+  /* ================= Start ================= */
+
+  (function init() {
+    var savedTheme = null;
+    try { savedTheme = localStorage.getItem('sudoku.theme'); } catch (e) {}
+    if (!savedTheme) {
+      savedTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', savedTheme);
+
+    var loaded = load();
+    if (loaded) {
+      state = loaded;
+      diffSel.value = state.difficulty;
+      render();
+      if (state.done) {
+        showOverlay('Gelöst! 🎉', 'Zeit: ' + fmtTime(state.seconds), [
+          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } }
+        ]);
+      } else if (state.over) {
+        showOverlay('Game Over', 'Du hast ' + state.maxMistakes + ' Fehler gemacht.', [
+          { label: 'Neues Spiel', primary: true, onClick: function () { startNewGame(state.difficulty); } },
+          { label: 'Weiterspielen', onClick: function () {
+              state.over = false; state.mistakes = 0; hideOverlay(); save(); render();
+            } }
+        ]);
+      } else {
+        startTimer();
+      }
+    } else {
+      startNewGame('mittel');
+    }
+  })();
+})();
+</script>
+</body>
+</html>
